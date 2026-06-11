@@ -86,6 +86,9 @@ interface FavoritesFilter {
   tag?: string;
   minRating?: number;
   maxRating?: number;
+  minStability?: number;
+  minHeatingSpeed?: number;
+  minHeatZoneConcentration?: number;
   sortBy?: 'recommendationIndex' | 'stability' | 'heatingSpeed' | 'heatZoneConcentration';
 }
 
@@ -95,6 +98,9 @@ export const favoritesApi = {
     if (filter?.tag) params.set('tag', filter.tag);
     if (filter?.minRating !== undefined) params.set('minRating', String(filter.minRating));
     if (filter?.maxRating !== undefined) params.set('maxRating', String(filter.maxRating));
+    if (filter?.minStability !== undefined) params.set('minStability', String(filter.minStability));
+    if (filter?.minHeatingSpeed !== undefined) params.set('minHeatingSpeed', String(filter.minHeatingSpeed));
+    if (filter?.minHeatZoneConcentration !== undefined) params.set('minHeatZoneConcentration', String(filter.minHeatZoneConcentration));
     if (filter?.sortBy) params.set('sortBy', filter.sortBy);
     const query = params.toString();
     return request<ExperimentResult[]>(`/favorites${query ? `?${query}` : ''}`);

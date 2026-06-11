@@ -48,9 +48,9 @@ function CollectModal({ config, onSubmit, onClose }: {
   onClose: () => void;
 }) {
   const [ratings, setRatings] = useState<ExperimentRatings>({
-    stability: 3,
-    heatingSpeed: 3,
-    heatZoneConcentration: 3,
+    stability: 0,
+    heatingSpeed: 0,
+    heatZoneConcentration: 0,
   });
   const [selectedTags, setSelectedTags] = useState<BusinessTag[]>([]);
 
@@ -59,6 +59,9 @@ function CollectModal({ config, onSubmit, onClose }: {
       prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
     );
   };
+
+  const allRated = ratings.stability > 0 && ratings.heatingSpeed > 0 && ratings.heatZoneConcentration > 0;
+  const canSubmit = allRated && selectedTags.length > 0;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
@@ -83,19 +86,32 @@ function CollectModal({ config, onSubmit, onClose }: {
           </div>
 
           <div>
-            <p className="text-sm text-slate-300 font-medium mb-3">评分</p>
+            <p className="text-sm text-slate-300 font-medium mb-3">
+              评分
+              <span className="text-xs text-slate-500 ml-2">（请逐项评分）</span>
+            </p>
             <div className="space-y-3">
               {RATING_ITEMS.map(({ key, label }) => (
                 <div key={key} className="flex items-center justify-between">
-                  <span className="text-xs text-slate-400 w-20">{label}</span>
+                  <span className={`text-xs w-20 ${ratings[key] > 0 ? 'text-slate-400' : 'text-slate-600'}`}>
+                    {label}
+                  </span>
                   <RatingStars
                     value={ratings[key]}
                     onChange={v => setRatings(prev => ({ ...prev, [key]: v }))}
                   />
-                  <span className="text-xs text-yellow-400 w-6 text-right">{ratings[key]}</span>
+                  <span className={`text-xs w-6 text-right ${ratings[key] > 0 ? 'text-yellow-400' : 'text-slate-600'}`}>
+                    {ratings[key] || '-'}
+                  </span>
                 </div>
               ))}
             </div>
+            {!allRated && (
+              <p className="text-xs text-orange-400 mt-2 flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3" />
+                请完成全部三项评分
+              </p>
+            )}
           </div>
 
           <div>
@@ -127,10 +143,10 @@ function CollectModal({ config, onSubmit, onClose }: {
             取消
           </button>
           <button
-            onClick={() => selectedTags.length > 0 && onSubmit({ ratings, tags: selectedTags })}
-            disabled={selectedTags.length === 0}
+            onClick={() => canSubmit && onSubmit({ ratings, tags: selectedTags })}
+            disabled={!canSubmit}
             className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
-              selectedTags.length > 0
+              canSubmit
                 ? 'bg-yellow-500 text-slate-900 hover:bg-yellow-400'
                 : 'bg-slate-700 text-slate-500 cursor-not-allowed'
             }`}
@@ -183,22 +199,37 @@ export const ExperimentPanel: React.FC = () => {
   const [modalConfig, setModalConfig] = useState<ExperimentConfig | null>(null);
   const [filterTag, setFilterTag] = useState<string>('');
   const [filterMinRating, setFilterMinRating] = useState<number>(0);
+  const [filterMinStability, setFilterMinStability] = useState<number>(0);
+  const [filterMinHeatingSpeed, setFilterMinHeatingSpeed] = useState<number>(0);
+  const [filterMinHeatZoneConcentration, setFilterMinHeatZoneConcentration] = useState<number>(0);
   const [filterSortBy, setFilterSortBy] = useState<string>('');
   const [showFilter, setShowFilter] = useState(false);
   const [expandedSuggestion, setExpandedSuggestion] = useState<string | null>(null);
+  const [allTags, setAllTags] = useState<string[]>([]);
 
   const loadFilteredFavorites = useCallback(async () => {
     try {
+      const sortByVal = filterSortBy as
+        | 'recommendationIndex'
+        | 'stability'
+        | 'heatingSpeed'
+        | 'heatZoneConcentration'
+        | undefined;
       const data = await api.favorites.getAll({
         tag: filterTag || undefined,
-        minRating: filterMinRating || undefined,
-        sortBy: (filterSortBy as any) || undefined,
+        minRating: filterMinRating > 0 ? filterMinRating : undefined,
+        minStability: filterMinStability > 0 ? filterMinStability : undefined,
+        minHeatingSpeed: filterMinHeatingSpeed > 0 ? filterMinHeatingSpeed : undefined,
+        minHeatZoneConcentration: filterMinHeatZoneConcentration > 0 ? filterMinHeatZoneConcentration : undefined,
+        sortBy: sortByVal || undefined,
       });
       setFavorites(data);
+      const tags = Array.from(new Set(data.flatMap(f => f.tags || [])));
+      setAllTags(tags);
     } catch (error) {
       console.error('加载收藏失败:', error);
     }
-  }, [filterTag, filterMinRating, filterSortBy, setFavorites]);
+  }, [filterTag, filterMinRating, filterMinStability, filterMinHeatingSpeed, filterMinHeatZoneConcentration, filterSortBy, setFavorites]);
 
   useEffect(() => {
     if (activeTab === 'favorites') {
@@ -266,7 +297,22 @@ export const ExperimentPanel: React.FC = () => {
     });
   };
 
-  const allTags = Array.from(new Set(favorites.flatMap(f => f.tags || [])));
+  const hasActiveFilters =
+    filterTag !== '' ||
+    filterMinRating > 0 ||
+    filterMinStability > 0 ||
+    filterMinHeatingSpeed > 0 ||
+    filterMinHeatZoneConcentration > 0 ||
+    filterSortBy !== '';
+
+  const resetFilters = () => {
+    setFilterTag('');
+    setFilterMinRating(0);
+    setFilterMinStability(0);
+    setFilterMinHeatingSpeed(0);
+    setFilterMinHeatZoneConcentration(0);
+    setFilterSortBy('');
+  };
 
   return (
     <div className="w-80 bg-slate-900/95 backdrop-blur-sm border-l border-slate-700 h-full flex flex-col">
@@ -307,7 +353,7 @@ export const ExperimentPanel: React.FC = () => {
         </div>
       </div>
 
-      {activeTab === 'favorites' && favorites.length > 0 && (
+      {activeTab === 'favorites' && (
         <div className="border-b border-slate-700">
           <button
             onClick={() => setShowFilter(!showFilter)}
@@ -315,12 +361,20 @@ export const ExperimentPanel: React.FC = () => {
           >
             <Filter className="w-3.5 h-3.5" />
             筛选与排序
-            {(filterTag || filterMinRating > 0 || filterSortBy) && (
+            {hasActiveFilters && (
               <span className="ml-auto w-2 h-2 bg-blue-400 rounded-full" />
             )}
           </button>
           {showFilter && (
             <div className="px-4 pb-3 space-y-3">
+              <div className="flex justify-end">
+                <button
+                  onClick={resetFilters}
+                  className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                >
+                  重置筛选
+                </button>
+              </div>
               <div>
                 <p className="text-xs text-slate-500 mb-1.5">按标签</p>
                 <div className="flex flex-wrap gap-1">
@@ -361,6 +415,34 @@ export const ExperimentPanel: React.FC = () => {
                   className="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
                 />
               </div>
+              {RATING_ITEMS.map(({ key, label }) => {
+                const valueMap: Record<string, number> = {
+                  stability: filterMinStability,
+                  heatingSpeed: filterMinHeatingSpeed,
+                  heatZoneConcentration: filterMinHeatZoneConcentration,
+                };
+                const setterMap: Record<string, (v: number) => void> = {
+                  stability: setFilterMinStability,
+                  heatingSpeed: setFilterMinHeatingSpeed,
+                  heatZoneConcentration: setFilterMinHeatZoneConcentration,
+                };
+                const value = valueMap[key];
+                const setter = setterMap[key];
+                return (
+                  <div key={key}>
+                    <p className="text-xs text-slate-500 mb-1.5">最低{label}: {value > 0 ? value : '不限'}</p>
+                    <input
+                      type="range"
+                      min="0"
+                      max="5"
+                      step="1"
+                      value={value}
+                      onChange={e => setter(parseFloat(e.target.value))}
+                      className="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                    />
+                  </div>
+                );
+              })}
               <div>
                 <p className="text-xs text-slate-500 mb-1.5">排序方式</p>
                 <select
@@ -454,8 +536,22 @@ export const ExperimentPanel: React.FC = () => {
             {favorites.length === 0 ? (
               <div className="text-center py-8 text-slate-500">
                 <Star className="w-12 h-12 mx-auto mb-2 opacity-30" />
-                <p className="text-sm">暂无收藏</p>
-                <p className="text-xs mt-1">点击实验记录的星标收藏</p>
+                {hasActiveFilters ? (
+                  <>
+                    <p className="text-sm">没有符合筛选条件的收藏</p>
+                    <button
+                      onClick={resetFilters}
+                      className="text-xs text-blue-400 hover:text-blue-300 mt-2"
+                    >
+                      重置筛选条件
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm">暂无收藏</p>
+                    <p className="text-xs mt-1">点击实验记录的星标收藏</p>
+                  </>
+                )}
               </div>
             ) : (
               favorites.map((fav) => {

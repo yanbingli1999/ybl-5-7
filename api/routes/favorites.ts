@@ -36,7 +36,7 @@ router.get('/', async (req: Request, res: Response) => {
       order: 'desc'
     });
 
-    const { tag, minRating, maxRating, sortBy } = req.query;
+    const { tag, minRating, maxRating, minStability, minHeatingSpeed, minHeatZoneConcentration, sortBy } = req.query;
 
     if (tag && typeof tag === 'string') {
       const tags = tag.split(',');
@@ -59,6 +59,27 @@ router.get('/', async (req: Request, res: Response) => {
       }
     }
 
+    if (minStability && typeof minStability === 'string') {
+      const min = parseFloat(minStability);
+      if (!isNaN(min)) {
+        favorites = favorites.filter(fav => (fav.ratings?.stability ?? 0) >= min);
+      }
+    }
+
+    if (minHeatingSpeed && typeof minHeatingSpeed === 'string') {
+      const min = parseFloat(minHeatingSpeed);
+      if (!isNaN(min)) {
+        favorites = favorites.filter(fav => (fav.ratings?.heatingSpeed ?? 0) >= min);
+      }
+    }
+
+    if (minHeatZoneConcentration && typeof minHeatZoneConcentration === 'string') {
+      const min = parseFloat(minHeatZoneConcentration);
+      if (!isNaN(min)) {
+        favorites = favorites.filter(fav => (fav.ratings?.heatZoneConcentration ?? 0) >= min);
+      }
+    }
+
     if (sortBy === 'recommendationIndex') {
       favorites.sort((a, b) => (b.recommendationIndex ?? 0) - (a.recommendationIndex ?? 0));
     } else if (sortBy === 'stability') {
@@ -70,7 +91,8 @@ router.get('/', async (req: Request, res: Response) => {
     }
 
     res.json({ success: true, data: favorites });
-  } catch (error) {
+  } catch (_error) {
+    void _error;
     res.status(500).json({ success: false, error: 'Failed to load favorites' });
   }
 });
@@ -97,7 +119,8 @@ router.post('/', async (req: Request, res: Response) => {
 
     await fileService.writeJsonFile(filePath, result);
     res.json({ success: true, data: result });
-  } catch (error) {
+  } catch (_error) {
+    void _error;
     res.status(500).json({ success: false, error: 'Failed to add favorite' });
   }
 });
@@ -112,7 +135,8 @@ router.delete('/:id', async (req: Request, res: Response) => {
     }
 
     res.json({ success: true });
-  } catch (error) {
+  } catch (_error) {
+    void _error;
     res.status(500).json({ success: false, error: 'Failed to delete favorite' });
   }
 });
