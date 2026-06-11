@@ -47,12 +47,35 @@ export interface TemperatureSnapshot {
   name?: string;
 }
 
+export interface ExperimentRatings {
+  stability: number;
+  heatingSpeed: number;
+  heatZoneConcentration: number;
+}
+
+export const BUSINESS_TAGS = [
+  '高效加热',
+  '精密温控',
+  '大面积散热',
+  '局部强化',
+  '节能优化',
+  '快速原型',
+  '教学演示',
+  '工业应用',
+] as const;
+
+export type BusinessTag = typeof BUSINESS_TAGS[number];
+
 export interface ExperimentResult {
   id: string;
   config: ExperimentConfig;
   snapshots: TemperatureSnapshot[];
   isFavorite: boolean;
   completedAt: number;
+  ratings: ExperimentRatings;
+  tags: BusinessTag[];
+  recommendationIndex: number;
+  improvementSuggestions: string[];
 }
 
 export type SimulationMode = 'idle' | 'running' | 'paused' | 'finished';

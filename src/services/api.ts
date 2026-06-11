@@ -82,8 +82,23 @@ export const snapshotsApi = {
     }),
 };
 
+interface FavoritesFilter {
+  tag?: string;
+  minRating?: number;
+  maxRating?: number;
+  sortBy?: 'recommendationIndex' | 'stability' | 'heatingSpeed' | 'heatZoneConcentration';
+}
+
 export const favoritesApi = {
-  getAll: () => request<ExperimentResult[]>('/favorites'),
+  getAll: (filter?: FavoritesFilter) => {
+    const params = new URLSearchParams();
+    if (filter?.tag) params.set('tag', filter.tag);
+    if (filter?.minRating !== undefined) params.set('minRating', String(filter.minRating));
+    if (filter?.maxRating !== undefined) params.set('maxRating', String(filter.maxRating));
+    if (filter?.sortBy) params.set('sortBy', filter.sortBy);
+    const query = params.toString();
+    return request<ExperimentResult[]>(`/favorites${query ? `?${query}` : ''}`);
+  },
   create: (result: ExperimentResult) =>
     request<ExperimentResult>('/favorites', {
       method: 'POST',
